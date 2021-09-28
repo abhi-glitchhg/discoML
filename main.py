@@ -2,53 +2,62 @@ import discord
 import os
 import arxiv
 
-client=discord.Client()
+client = discord.Client()
+
+
 @client.event
 async def on_ready():
-  print(f"im on_ready, {client.user}")
+    print(f"im on_ready, {client.user}")
+
+
 @client.event
 async def on_message(message):
-  if message.author == client.user:
-    return
-  if message.content.startswith("$arx "):
-    title,abso,pdf,authors,summary,comment=get_arx(message.content[5:])
-    reply_=discord.Embed(
-      title=title,
-      authors=authors,
-      description=summary,
-      url=abso,
-      set_footer=("I'm grsteful for the Arvix Labs for providing this API service! Also thanks to @Likas Schwasb for the library!")
-    )
-    await message.channel.send(reply_)
+    if message.content.startswith("$arx "):
 
+        query = message.content[5:]
+        search = arxiv.Search(
+            query=query,
+            max_results=5,
+        )
+        title = ""
+        links = []
+        abso = ""
+        pdf = ""
+        authors = []
+        summary = ""
+        comment = ""
+        i = 0
+        for result in search.results():
 
-def get_arx(query):
-  query=str(query)
-  search= arxiv.Search(
-    query=query,
-   max_results=5)
-  titles=""
-  links=[]
-  abso=""
-  pdf=""
-  authors=""
-  summary=""
-  comment=""
-  for result in search.results():
-    titles += result.title+"\t"
-    authors=result.authors+"\t"
-    summary=result.summary+"\t"
-    comment=result.comment+"\t"
+            title = result.title + "\t"
+            author = [_ for _ in result.authors]
+            if result.summary is not None:
+                summary = result.summary + "\t"
+            if result.comment is not None:
+                comment = result.comment + "\t"
 
-    links+=[str(i) for i in result.links]
-    for link in links:
-      if "abs" in link:
-        abso=link
-      if "pdf" in link:
-        pdf=link
-
-  return titles,abso,pdf,authors,summary,comment
-
+            links = [str(i) for i in result.links]
+            for link in links:
+                if "abs" in link:
+                    abso = link
+                if "pdf" in link:
+                    pdf = link
+            reply_ = discord.Embed(
+                title=title,
+                authors=authors,
+                description=summary,
+                url=abso,
+                set_footer=(
+                    "I'm grateful for the Arvix Labs for providing this API service! Also thanks to @Likas Schwasb for the library!")
+            )
+            reply_.add_field(name="pdf", value=pdf, inline=True)
+            i += 1
+            if i == 5:
+                # greet="we are grateful to arxiv for api service!"
+                greet = None
+            else:
+                greet = None
+            await message.channel.send(greet, embed=reply_)
 
 
 my_secret = os.environ['TOKEN']
